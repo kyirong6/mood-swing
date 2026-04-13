@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Swing — Harmonic Canvas + AI Melody</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background: #16213e;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            border-right: 1px solid #0f3460;
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-size: 1.4rem;
+            color: #e94560;
+            margin-bottom: 2px;
+        }
+
+        .sidebar .subtitle {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .control-group {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: #e94560;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 7px 8px;
+            border-radius: 6px;
+            border: 1px solid #0f3460;
+            background: #0f172a;
+            color: #e0e0e0;
+            font-size: 0.8rem;
+        }
+
+        .control-group input[type="color"] {
+            width: 100%;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-row .control-group { flex: 1; }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e94560;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected { background: #4ecca3; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* --- Chord display --- */
+        .chord-display {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .chord-display .chord-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #e94560;
+            transition: all 0.3s;
+        }
+
+        .chord-display .chord-mood {
+            font-size: 0.8rem;
+            color: #4ecca3;
+            font-style: italic;
+            margin-top: 2px;
+        }
+
+        .chord-display .chord-notes {
+            font-size: 0.7rem;
+            color: #666;
+            font-family: 'Courier New', monospace;
+            margin-top: 4px;
+        }
+
+        /* --- Model status --- */
+        .model-status {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.7rem;
+        }
+
+        .model-status .model-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .model-status .model-info {
+            color: #4ecca3;
+            font-family: 'Courier New', monospace;
+        }
+
+        .model-status .model-info.loading { color: #e9a045; }
+        .model-status .model-info.error { color: #e94560; }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .btn-danger {
+            background: #e94560;
+            color: white;
+        }
+
+        .btn-danger:hover { background: #d63851; }
+
+        .btn-secondary {
+            background: #0f3460;
+            color: #e0e0e0;
+        }
+
+        .btn-secondary:hover { background: #1a4a8a; }
+
+        .btn-secondary.btn-toggle-active {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-row .btn { flex: 1; }
+
+        .drone-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .drone-btn {
+            padding: 6px 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .drone-btn.active {
+            background: #e94560;
+            color: #fff;
+            border-color: #e94560;
+        }
+
+        .inline-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            text-transform: none !important;
+            letter-spacing: 0 !important;
+            color: #ccd2e0 !important;
+            font-size: 0.82rem !important;
+            font-weight: 600;
+        }
+
+        .inline-toggle input[type="checkbox"] {
+            accent-color: #e94560;
+        }
+
+        /* --- Live data display --- */
+        .live-data {
+            font-size: 0.65rem;
+            color: #666;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+        }
+
+        .live-data span { color: #4ecca3; }
+
+        /* --- Canvas area --- */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        #drawCanvas {
+            flex: 1;
+            cursor: crosshair;
+            display: block;
+            background: linear-gradient(
+                to bottom,
+                #f6ff6b 0%,
+                #47f5b5 18%,
+                #3a9dff 45%,
+                #7a45c4 70%,
+                #9b2b5a 86%,
+                #140814 100%
+            );
+        }
+
+        .key-zones {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            right: 0;
+            bottom: 60px;
+            display: flex;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .key-zone {
+            flex: 1;
+            position: relative;
+            border-right: 1px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .key-zone:last-child { border-right: none; }
+
+        .key-zone-label {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(15, 52, 96, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #d6f5ff;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        /* --- Y-axis chord label strip --- */
+        .y-axis-labels {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            bottom: 60px;
+            width: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .y-label {
+            font-size: 0.5rem;
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+        }
+
+        /* --- Visualizer overlay --- */
+        .visualizer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            pointer-events: none;
+            background: linear-gradient(transparent, rgba(26, 26, 46, 0.8));
+        }
+
+        #vizCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Gradient overlay on canvas edge --- */
+        .emotion-gradient {
+            position: absolute;
+            top: 40px;
+            right: 0;
+            bottom: 60px;
+            width: 6px;
+            background: linear-gradient(
+                to bottom,
+                #f6ff6b,   /* bright */
+                #47f5b5,   /* happy */
+                #3a9dff,   /* warm/open */
+                #7a45c4,   /* melancholy */
+                #9b2b5a,   /* dark */
+                #140814    /* dissonant */
+            );
+            border-radius: 3px;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .chord-overlay {
+            position: absolute;
+            top: 40px;
+            left: 34px;
+            right: 12px;
+            bottom: 60px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 4;
+        }
+
+        .chord-overlay.visible { opacity: 0.78; }
+
+        .chord-anchor {
+            position: absolute;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            color: var(--anchor-color, rgba(220, 230, 245, 0.65));
+        }
+
+        .chord-anchor-line {
+            width: calc(100% - 84px);
+            border-top: 1px dashed currentColor;
+        }
+
+        .chord-anchor-label {
+            position: absolute;
+            right: 0;
+            top: -8px;
+            font-size: 0.54rem;
+            letter-spacing: 0.03em;
+            color: rgba(240, 246, 255, 0.92);
+            background: rgba(14, 20, 36, 0.68);
+            border: 1px solid rgba(120, 150, 190, 0.35);
+            border-radius: 10px;
+            padding: 1px 6px;
+            white-space: nowrap;
+            backdrop-filter: blur(1px);
+        }
+
+        /* --- Mapping guide overlay --- */
+        .mapping-guide {
+            position: absolute;
+            top: 50px;
+            right: 16px;
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.7rem;
+            color: #888;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+
+        .mapping-guide.visible { opacity: 1; pointer-events: auto; }
+
+        .mapping-guide h3 {
+            color: #e94560;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .mapping-guide div { margin-bottom: 4px; }
+        .mapping-guide .key { color: #4ecca3; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <div>
+                <h1>Mood Swing</h1>
+                <div class="subtitle">Draw mood → AI generates music</div>
+            </div>
+
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connecting...</span>
+            </div>
+
+            <!-- Current chord display -->
+            <div class="chord-display">
+                <div class="chord-name" id="chordName">—</div>
+                <div class="chord-mood" id="chordMood">move cursor to select chord</div>
+                <div class="chord-notes" id="chordNotes"></div>
+            </div>
+
+            <!-- Model status -->
+            <div class="model-status">
+                <div class="model-label">AI Melody (DistilGPT2)</div>
+                <div class="model-info loading" id="modelStatus">Loading model...</div>
+            </div>
+
+            <div class="control-group">
+                <label>Brush Color (controls AI temperature / wildness)</label>
+                <input type="color" id="brushColor" value="#e94560">
+            </div>
+
+            <div class="control-group">
+                <label>Brush Size: <span id="brushSizeVal">10</span>px (note duration)</label>
+                <input type="range" id="brushSize" min="2" max="50" value="10">
+            </div>
+
+            <div class="control-group">
+                <label>Brush Opacity</label>
+                <input type="range" id="brushOpacity" min="10" max="100" value="80">
+            </div>
+
+            <div class="control-group">
+                <label>Tempo: <span id="bpmVal">100</span> BPM</label>
+                <input type="range" id="bpmControl" min="40" max="220" value="100">
+            </div>
+
+            <div class="control-group">
+                <label>Drone Pitch (separate channel)</label>
+                <div class="drone-buttons" id="dronePitchButtons">
+                    <button class="btn btn-secondary drone-btn active" data-pitch="">Off</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="C">C</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="C#">C#/Db</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="D">D</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="D#">D#/Eb</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="E">E</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="F">F</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="F#">F#/Gb</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="G">G</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="G#">G#/Ab</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="A">A</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="A#">A#/Bb</button>
+                    <button class="btn btn-secondary drone-btn" data-pitch="B">B</button>
+                </div>
+                <label style="margin-top:8px;">Drone Octave</label>
+                <select id="droneOctave">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+                <div class="live-data" style="margin-top:8px;">
+                    Drone: <span id="droneStatus">Off</span><br>
+                    Channel: <span id="droneChannel">2</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Drums (channel 3)</label>
+                <label class="inline-toggle">
+                    <input type="checkbox" id="drumEnabled">
+                    Groove On
+                </label>
+                <label style="margin-top:8px;">Groove Style</label>
+                <select id="drumGroove">
+                    <option value="electro_pulse">Electro Pulse</option>
+                    <option value="boom_bap_night">Boom Bap Night</option>
+                    <option value="midnight_swing">Midnight Swing</option>
+                    <option value="halftime_glitch">Half-Time Glitch</option>
+                </select>
+                <div class="live-data" style="margin-top:8px;">
+                    Drums: <span id="drumStatus">Off</span><br>
+                    Groove: <span id="drumGrooveStatus">Electro Pulse</span><br>
+                    Channel: <span id="drumChannel">3</span>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" id="btnClear">Clear Canvas</button>
+                <button class="btn btn-danger" id="btnPanic">MIDI Panic</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" id="btnGuide">Mapping Guide</button>
+                <button class="btn btn-secondary" id="btnChordOverlay">Chord Overlay</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" id="btnRandomKeys">Randomize Keys</button>
+            </div>
+
+            <div class="control-group">
+                <label>Live Parameters</label>
+                <div class="live-data" id="liveData">
+                    Chord: <span id="liveChord">--</span><br>
+                    Mood: <span id="liveMood">--</span><br>
+                    Key Zone: <span id="liveKey">--</span><br>
+                    BPM: <span id="liveBpm">100</span><br>
+                    Velocity: <span id="liveVelocity">--</span><br>
+                    Temperature: <span id="liveTemp">--</span><br>
+                    Duration: <span id="liveDuration">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-area">
+            <div class="canvas-header">
+                <span>Y-axis: mood (top=happy → bottom=dissonant) &nbsp;|&nbsp; X-axis: key zone</span>
+                <span id="canvasSize">--</span>
+            </div>
+            <canvas id="drawCanvas"></canvas>
+
+            <div class="key-zones" id="keyZones">
+                <div class="key-zone">
+                    <div class="key-zone-label" id="keyLabel0">C</div>
+                </div>
+                <div class="key-zone">
+                    <div class="key-zone-label" id="keyLabel1">G</div>
+                </div>
+                <div class="key-zone">
+                    <div class="key-zone-label" id="keyLabel2">D</div>
+                </div>
+            </div>
+
+            <div class="chord-overlay" id="chordOverlay"></div>
+
+            <!-- Y-axis mood labels -->
+            <div class="y-axis-labels">
+                <div class="y-label">bright</div>
+                <div class="y-label">warm</div>
+                <div class="y-label">melancholy</div>
+                <div class="y-label">dark</div>
+                <div class="y-label">dissonant</div>
+            </div>
+
+            <!-- Emotion gradient strip -->
+            <div class="emotion-gradient"></div>
+
+            <!-- Note visualizer at bottom -->
+            <div class="visualizer">
+                <canvas id="vizCanvas"></canvas>
+            </div>
+
+            <!-- Mapping guide overlay -->
+            <div class="mapping-guide" id="mappingGuide">
+                <h3>Drawing → Music Mappings</h3>
+                <div><span class="key">Y Position</span> → Chord (top=happy, bottom=dissonant)</div>
+                <div><span class="key">X Position</span> → Key Zone (left/mid/right tonics)</div>
+                <div><span class="key">Speed</span> → Velocity (loud/soft)</div>
+                <div><span class="key">Density</span> → AI generation rate</div>
+                <div><span class="key">Brush Color</span> → AI temperature (conservative→wild)</div>
+                <div><span class="key">Brush Size</span> → Note duration</div>
+                <div style="margin-top:8px;color:#e94560;font-weight:600;">How it works:</div>
+                <div>Drawing controls mood → AI generates melody</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+    (function() {
+        "use strict";
+
+        // ---------------------------------------------------------------
+        // Socket.IO connection
+        // ---------------------------------------------------------------
+        const socket = io();
+
+        const statusDot = document.getElementById("statusDot");
+        const statusText = document.getElementById("statusText");
+        const chordNameEl = document.getElementById("chordName");
+        const chordMoodEl = document.getElementById("chordMood");
+        const chordNotesEl = document.getElementById("chordNotes");
+        const modelStatusEl = document.getElementById("modelStatus");
+        const bpmControlEl = document.getElementById("bpmControl");
+        const bpmValEl = document.getElementById("bpmVal");
+        const liveBpmEl = document.getElementById("liveBpm");
+        const dronePitchButtonsEl = document.getElementById("dronePitchButtons");
+        const droneOctaveEl = document.getElementById("droneOctave");
+        const droneStatusEl = document.getElementById("droneStatus");
+        const droneChannelEl = document.getElementById("droneChannel");
+        const drumEnabledEl = document.getElementById("drumEnabled");
+        const drumGrooveEl = document.getElementById("drumGroove");
+        const drumStatusEl = document.getElementById("drumStatus");
+        const drumGrooveStatusEl = document.getElementById("drumGrooveStatus");
+        const drumChannelEl = document.getElementById("drumChannel");
+        const keyLabelEls = [
+            document.getElementById("keyLabel0"),
+            document.getElementById("keyLabel1"),
+            document.getElementById("keyLabel2"),
+        ];
+        const liveChordEl = document.getElementById("liveChord");
+        const liveMoodEl = document.getElementById("liveMood");
+        const liveKeyEl = document.getElementById("liveKey");
+        const liveVelocityEl = document.getElementById("liveVelocity");
+        const liveTempEl = document.getElementById("liveTemp");
+        const liveDurationEl = document.getElementById("liveDuration");
+        const btnRandomKeys = document.getElementById("btnRandomKeys");
+        const btnChordOverlay = document.getElementById("btnChordOverlay");
+        const chordOverlayEl = document.getElementById("chordOverlay");
+        let currentKey = "--";
+        let currentSegment = 0;
+        let selectedDronePitch = "";
+        let chordOverlayVisible = false;
+
+        function renderDronePitchButtons() {
+            const buttons = dronePitchButtonsEl.querySelectorAll(".drone-btn");
+            for (const btn of buttons) {
+                const pitch = btn.dataset.pitch || "";
+                btn.classList.toggle("active", pitch === selectedDronePitch);
+            }
+        }
+
+        function sendDronePitch(pitch) {
+            selectedDronePitch = pitch || "";
+            renderDronePitchButtons();
+            if (!selectedDronePitch) {
+                socket.emit("stop_drone");
+                return;
+            }
+            const octave = parseInt(droneOctaveEl.value, 10);
+            socket.emit("set_drone", { pitch: selectedDronePitch, octave, velocity: 72 });
+        }
+
+        function updateDroneUI(data) {
+            if (!data || typeof data !== "object") return;
+            if (typeof data.channel === "number") {
+                droneChannelEl.textContent = String(data.channel);
+            }
+            if (typeof data.octave === "number") {
+                droneOctaveEl.value = String(data.octave);
+            }
+            if (data.active) {
+                const pitchClass = data.pitch_class || "";
+                if (pitchClass) {
+                    selectedDronePitch = pitchClass;
+                }
+                droneStatusEl.textContent = data.pitch || pitchClass || "On";
+            } else {
+                selectedDronePitch = "";
+                droneStatusEl.textContent = "Off";
+            }
+            renderDronePitchButtons();
+        }
+
+        function updateDrumGrooveOptions(grooves) {
+            if (!Array.isArray(grooves) || grooves.length === 0) return;
+            const current = drumGrooveEl.value;
+            drumGrooveEl.innerHTML = "";
+            for (const groove of grooves) {
+                if (!groove || typeof groove.id !== "string") continue;
+                const option = document.createElement("option");
+                option.value = groove.id;
+                option.textContent = groove.label || groove.id;
+                drumGrooveEl.appendChild(option);
+            }
+            if (Array.from(drumGrooveEl.options).some(o => o.value === current)) {
+                drumGrooveEl.value = current;
+            }
+        }
+
+        function updateDrumUI(data) {
+            if (!data || typeof data !== "object") return;
+            if (typeof data.channel === "number") {
+                drumChannelEl.textContent = String(data.channel);
+            }
+            if (typeof data.enabled === "boolean") {
+                drumEnabledEl.checked = data.enabled;
+                drumStatusEl.textContent = data.enabled ? "On" : "Off";
+            }
+            if (typeof data.groove === "string" && Array.from(drumGrooveEl.options).some(o => o.value === data.groove)) {
+                drumGrooveEl.value = data.groove;
+            }
+            if (typeof data.groove_label === "string" && data.groove_label) {
+                drumGrooveStatusEl.textContent = data.groove_label;
+            } else {
+                const selected = drumGrooveEl.options[drumGrooveEl.selectedIndex];
+                drumGrooveStatusEl.textContent = selected ? selected.textContent : "--";
+            }
+        }
+
+        function updateKeyMapUI(payload) {
+            const keyMap = Array.isArray(payload) ? payload : payload?.key_map;
+            if (!Array.isArray(keyMap)) return;
+            for (let i = 0; i < keyLabelEls.length; i++) {
+                const item = keyMap[i];
+                keyLabelEls[i].textContent = item?.key || "--";
+            }
+        }
+
+        function colorForChordY(y) {
+            if (y < 0.22) return "rgba(135, 255, 200, 0.54)";
+            if (y < 0.44) return "rgba(120, 210, 255, 0.54)";
+            if (y < 0.66) return "rgba(176, 140, 255, 0.54)";
+            if (y < 0.84) return "rgba(255, 136, 176, 0.54)";
+            return "rgba(255, 116, 116, 0.58)";
+        }
+
+        function chordQualityLabel(name) {
+            if (typeof name !== "string") return "";
+            const parts = name.trim().split(/\s+/);
+            if (parts.length <= 1) return parts[0] || "";
+            return parts.slice(1).join(" ");
+        }
+
+        function renderChordOverlay(chords) {
+            if (!Array.isArray(chords) || !chords.length) return;
+            const sorted = chords
+                .filter((c) => c && typeof c.y === "number")
+                .slice()
+                .sort((a, b) => a.y - b.y);
+
+            chordOverlayEl.innerHTML = "";
+            const frag = document.createDocumentFragment();
+            let lastLabeledY = -1;
+            for (const item of sorted) {
+                const y = Math.max(0, Math.min(1, item.y));
+                const row = document.createElement("div");
+                row.className = "chord-anchor";
+                row.style.top = `${(y * 100).toFixed(2)}%`;
+                row.style.setProperty("--anchor-color", colorForChordY(y));
+
+                const line = document.createElement("div");
+                line.className = "chord-anchor-line";
+                row.appendChild(line);
+
+                const shouldLabel = (y - lastLabeledY) >= 0.07 || y < 0.04 || y > 0.96;
+                if (shouldLabel) {
+                    const label = document.createElement("div");
+                    const roman = typeof item.roman === "string" ? item.roman : "";
+                    const quality = chordQualityLabel(item.name);
+                    label.className = "chord-anchor-label";
+                    label.textContent = `${roman} ${quality}`.trim() || "Chord";
+                    row.appendChild(label);
+                    lastLabeledY = y;
+                }
+
+                frag.appendChild(row);
+            }
+            chordOverlayEl.appendChild(frag);
+        }
+
+        function setChordOverlayVisible(visible) {
+            chordOverlayVisible = !!visible;
+            chordOverlayEl.classList.toggle("visible", chordOverlayVisible);
+            btnChordOverlay.classList.toggle("btn-toggle-active", chordOverlayVisible);
+        }
+
+        socket.on("connect", () => {
+            statusDot.classList.add("connected");
+            statusText.textContent = "Connected";
+        });
+
+        socket.on("disconnect", () => {
+            statusDot.classList.remove("connected");
+            statusText.textContent = "Disconnected";
+        });
+
+        socket.on("server_status", (data) => {
+            const melodyPort = data.midi_melody_port || "Melody";
+            const dronePort = data.midi_drone_port || "Drone";
+            const melodyOk = !!data.midi_melody_connected;
+            const droneOk = !!data.midi_drone_connected;
+            const drumOk = !!data?.drum?.enabled && melodyOk;
+            statusText.textContent = `MIDI M:${melodyOk ? "on" : "off"} D:${droneOk ? "on" : "off"} R:${drumOk ? "on" : "off"} — ${melodyPort} / ${dronePort}`;
+
+            if (typeof data.bpm === "number") {
+                bpmControlEl.value = String(data.bpm);
+                bpmValEl.textContent = String(data.bpm);
+                liveBpmEl.textContent = String(data.bpm);
+            }
+            if (data.drum_grooves) {
+                updateDrumGrooveOptions(data.drum_grooves);
+            }
+            if (data.chords) {
+                renderChordOverlay(data.chords);
+            }
+            if (data.key_map) {
+                updateKeyMapUI(data.key_map);
+            }
+            if (data.drone) {
+                updateDroneUI(data.drone);
+            }
+            if (data.drum) {
+                updateDrumUI(data.drum);
+            }
+
+            if (data.model_loaded) {
+                modelStatusEl.textContent = "Model ready";
+                modelStatusEl.className = "model-info";
+            } else if (data.model_error) {
+                modelStatusEl.textContent = "Fallback mode (model load failed)";
+                modelStatusEl.className = "model-info error";
+            } else {
+                modelStatusEl.textContent = "Loading model...";
+                modelStatusEl.className = "model-info loading";
+            }
+        });
+
+        // Chord change events from backend
+        socket.on("chord_change", (data) => {
+            chordNameEl.textContent = data.name;
+            chordMoodEl.textContent = data.mood;
+            chordNotesEl.textContent = data.notes.join(" · ");
+            if (typeof data.key === "string") currentKey = data.key;
+            if (typeof data.segment === "number") currentSegment = data.segment;
+
+            // Color the chord name based on mood position
+            const y = data.y;
+            if (y < 0.25) {
+                chordNameEl.style.color = "#4ecca3";       // green = happy
+            } else if (y < 0.45) {
+                chordNameEl.style.color = "#45b7d1";       // blue = warm
+            } else if (y < 0.65) {
+                chordNameEl.style.color = "#a855f7";       // purple = melancholy
+            } else if (y < 0.85) {
+                chordNameEl.style.color = "#e94560";       // red = dark
+            } else {
+                chordNameEl.style.color = "#ff4444";       // deep red = dissonant
+            }
+        });
+
+        // Model phrase generation events
+        socket.on("model_phrase", (data) => {
+            modelStatusEl.textContent = `Generated ${data.num_events} events (temp: ${data.temperature})`;
+            modelStatusEl.className = "model-info";
+        });
+
+        socket.on("bpm_update", (data) => {
+            if (!data || typeof data.bpm !== "number") return;
+            const bpm = Math.round(data.bpm);
+            bpmControlEl.value = String(bpm);
+            bpmValEl.textContent = String(bpm);
+            liveBpmEl.textContent = String(bpm);
+        });
+
+        socket.on("drone_update", (data) => {
+            updateDroneUI(data);
+        });
+
+        socket.on("drum_update", (data) => {
+            updateDrumUI(data);
+        });
+
+        socket.on("key_map_update", (data) => {
+            updateKeyMapUI(data);
+        });
+
+        // ---------------------------------------------------------------
+        // Canvas setup
+        // ---------------------------------------------------------------
+        const canvas = document.getElementById("drawCanvas");
+        const ctx = canvas.getContext("2d");
+        const vizCanvas = document.getElementById("vizCanvas");
+        const vizCtx = vizCanvas.getContext("2d");
+
+        function createCanvasBackgroundGradient() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0.00, "#f6ff6b");  // bright/vibrant top
+            gradient.addColorStop(0.18, "#47f5b5");
+            gradient.addColorStop(0.45, "#3a9dff");
+            gradient.addColorStop(0.70, "#7a45c4");
+            gradient.addColorStop(0.86, "#9b2b5a");
+            gradient.addColorStop(1.00, "#140814");  // dark bottom
+            return gradient;
+        }
+
+        function paintCanvasBackground() {
+            ctx.fillStyle = createCanvasBackgroundGradient();
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function resizeCanvas() {
+            const area = canvas.parentElement;
+            const header = area.querySelector(".canvas-header");
+            canvas.width = area.clientWidth;
+            canvas.height = area.clientHeight - header.clientHeight;
+            vizCanvas.width = area.clientWidth;
+            vizCanvas.height = 60;
+            document.getElementById("canvasSize").textContent =
+                `${canvas.width} × ${canvas.height}`;
+            paintCanvasBackground();
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        // ---------------------------------------------------------------
+        // Drawing state
+        // ---------------------------------------------------------------
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let lastTime = Date.now();
+        let densityWindow = [];
+        const DENSITY_WINDOW_MS = 1000;
+
+        // Controls
+        const brushColorEl = document.getElementById("brushColor");
+        const brushSizeEl = document.getElementById("brushSize");
+        const brushOpacityEl = document.getElementById("brushOpacity");
+        const brushSizeVal = document.getElementById("brushSizeVal");
+
+        brushSizeEl.addEventListener("input", () => {
+            brushSizeVal.textContent = brushSizeEl.value;
+        });
+
+        bpmControlEl.addEventListener("input", () => {
+            const bpm = parseInt(bpmControlEl.value, 10);
+            bpmValEl.textContent = String(bpm);
+            liveBpmEl.textContent = String(bpm);
+            socket.emit("set_bpm", { bpm });
+        });
+
+        dronePitchButtonsEl.addEventListener("click", (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+            const button = target.closest(".drone-btn");
+            if (!button) return;
+            sendDronePitch(button.dataset.pitch || "");
+        });
+
+        droneOctaveEl.addEventListener("change", () => {
+            if (!selectedDronePitch) return;
+            const octave = parseInt(droneOctaveEl.value, 10);
+            socket.emit("set_drone", { pitch: selectedDronePitch, octave, velocity: 72 });
+        });
+
+        drumEnabledEl.addEventListener("change", () => {
+            socket.emit("set_drum_enabled", { enabled: drumEnabledEl.checked });
+        });
+
+        drumGrooveEl.addEventListener("change", () => {
+            const groove = drumGrooveEl.value;
+            socket.emit("set_drum_groove", { groove });
+        });
+
+        btnRandomKeys.addEventListener("click", () => {
+            socket.emit("randomize_keys");
+        });
+
+        // ---------------------------------------------------------------
+        // Color → Hue extraction
+        // ---------------------------------------------------------------
+        function hexToHue(hex) {
+            let r = parseInt(hex.slice(1, 3), 16) / 255;
+            let g = parseInt(hex.slice(3, 5), 16) / 255;
+            let b = parseInt(hex.slice(5, 7), 16) / 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h = 0;
+            if (max !== min) {
+                let d = max - min;
+                if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                else if (max === g) h = ((b - r) / d + 2) / 6;
+                else h = ((r - g) / d + 4) / 6;
+            }
+            return h;
+        }
+
+        function calculateDensity() {
+            const now = Date.now();
+            densityWindow = densityWindow.filter(t => now - t < DENSITY_WINDOW_MS);
+            return Math.min(densityWindow.length / 60, 1.0);
+        }
+
+        function calculateSpeed(x, y) {
+            const now = Date.now();
+            const dt = Math.max(now - lastTime, 1);
+            const dx = x - lastX;
+            const dy = y - lastY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = dist / dt;
+            return Math.min(speed / 2.0, 1.0);
+        }
+
+        // ---------------------------------------------------------------
+        // Drawing handlers
+        // ---------------------------------------------------------------
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDraw(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getCanvasPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            lastTime = Date.now();
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            const pos = getCanvasPos(e);
+            const size = parseInt(brushSizeEl.value);
+            const opacity = parseInt(brushOpacityEl.value) / 100;
+            const color = brushColorEl.value;
+
+            // Draw the stroke
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = opacity;
+            ctx.lineWidth = size;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+
+            // Calculate drawing parameters
+            const speed = calculateSpeed(pos.x, pos.y);
+            densityWindow.push(Date.now());
+            const density = calculateDensity();
+            const hue = hexToHue(color);
+            const normX = pos.x / canvas.width;
+            const normY = pos.y / canvas.height;
+            const normBrush = (size - 2) / 48;
+
+            // Send to backend
+            socket.emit("drawing_data", {
+                x: normX,
+                y: normY,
+                speed: speed,
+                density: density,
+                hue: hue,
+                brush_size: normBrush,
+                is_drawing: true
+            });
+
+            // Update live display
+            updateLiveData(normX, normY, speed, density, hue, normBrush);
+
+            // Add to visualizer
+            addVizNote(normX, normY, speed, hue);
+
+            lastX = pos.x;
+            lastY = pos.y;
+            lastTime = Date.now();
+        }
+
+        function endDraw(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            socket.emit("drawing_data", { is_drawing: false });
+        }
+
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", endDraw);
+        canvas.addEventListener("mouseleave", endDraw);
+        canvas.addEventListener("touchstart", startDraw, { passive: false });
+        canvas.addEventListener("touchmove", draw, { passive: false });
+        canvas.addEventListener("touchend", endDraw);
+
+        // ---------------------------------------------------------------
+        // Live data display
+        // ---------------------------------------------------------------
+        function updateLiveData(x, y, speed, density, hue, brushSize) {
+            const velocity = Math.round(50 + speed * 60);
+            const temperature = (0.5 + hue * 1.0).toFixed(2);
+            const duration = Math.round((0.1 + brushSize * 0.9) * 1000);
+            liveChordEl.textContent = chordNameEl.textContent;
+            liveMoodEl.textContent = chordMoodEl.textContent;
+            liveKeyEl.textContent = `${currentKey} (Zone ${currentSegment + 1})`;
+            liveVelocityEl.textContent = String(velocity);
+            liveTempEl.textContent = temperature;
+            liveDurationEl.textContent = `${duration}ms`;
+        }
+
+        // ---------------------------------------------------------------
+        // Note visualizer (bottom bar)
+        // ---------------------------------------------------------------
+        let vizNotes = [];
+
+        function addVizNote(x, y, speed, hue) {
+            // Color based on Y position (mood)
+            let vizHue;
+            if (y < 0.25) vizHue = 160;        // green
+            else if (y < 0.5) vizHue = 200;    // blue
+            else if (y < 0.75) vizHue = 280;   // purple
+            else vizHue = 350;                  // red
+
+            vizNotes.push({
+                x: x * vizCanvas.width,
+                y: Math.random() * vizCanvas.height,
+                radius: 3 + speed * 8,
+                hue: vizHue,
+                alpha: 1.0,
+                born: Date.now()
+            });
+        }
+
+        function renderViz() {
+            vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+            const now = Date.now();
+
+            vizNotes = vizNotes.filter(n => {
+                const age = (now - n.born) / 1000;
+                if (age > 2.0) return false;
+                n.alpha = Math.max(0, 1 - age / 2.0);
+                vizCtx.beginPath();
+                vizCtx.arc(n.x, n.y, n.radius * (1 + age * 0.5), 0, Math.PI * 2);
+                vizCtx.fillStyle = `hsla(${n.hue}, 80%, 60%, ${n.alpha * 0.6})`;
+                vizCtx.fill();
+                return true;
+            });
+
+            requestAnimationFrame(renderViz);
+        }
+
+        renderViz();
+
+        // ---------------------------------------------------------------
+        // Buttons
+        // ---------------------------------------------------------------
+        document.getElementById("btnClear").addEventListener("click", () => {
+            paintCanvasBackground();
+            vizNotes = [];
+        });
+
+        document.getElementById("btnPanic").addEventListener("click", () => {
+            socket.emit("panic");
+        });
+
+        const mappingGuide = document.getElementById("mappingGuide");
+        document.getElementById("btnGuide").addEventListener("click", () => {
+            mappingGuide.classList.toggle("visible");
+        });
+        btnChordOverlay.addEventListener("click", () => {
+            setChordOverlayVisible(!chordOverlayVisible);
+        });
+        setChordOverlayVisible(false);
+
+    })();
+    </script>
+</body>
+</html>
